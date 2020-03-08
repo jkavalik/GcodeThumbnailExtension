@@ -27,12 +27,18 @@ namespace GcodeThumbnailExtension
             }
             catch (Exception exception)
             {
-                //  Log the exception and return null for failure
+                //  Log the exception and return null for failure (no thumbnail to show)
                 LogError("An exception occurred opening the file.", exception);
                 return null;
             }
         }
 
+        /// <summary>
+        /// Create the resized bitmap representation that can be used by the Shell
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <param name="width"></param>
+        /// <returns></returns>
         private Bitmap GetThumbnailForGcode(StreamReader reader, uint width)
         {
             //  Create the bitmap dimensions
@@ -57,9 +63,14 @@ namespace GcodeThumbnailExtension
             return bitmap;
         }
 
+        /// <summary>
+        /// Parse the gcode recursively to find the last thumbnail and return the decoded image
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
         private Image ReadThumbnailFromGcode(StreamReader reader)
         {
-            int thumbnailSize = 0;
+            int thumbnailSize = 0; // currently unused, intended to enable picking the best thumbnail image later
             int counter = 0, maxCounter = 1000;
             String line = "";
 
@@ -79,9 +90,11 @@ namespace GcodeThumbnailExtension
                 throw new Exception();
             }
 
+            // parse the thumbnail size (it seems somehow imprecise, the number being slightly smaller than actual base64 encoded file size
             String[] thumbnailMeta = line.Split(' ');
             thumbnailSize = Int32.Parse(thumbnailMeta[thumbnailMeta.Length - 1]);
 
+            // load current thumbnail data
             StringBuilder thumbnailData = ReadBase64Data(reader);
             byte[] imageBytes = Convert.FromBase64String(thumbnailData.ToString());
 
@@ -93,9 +106,11 @@ namespace GcodeThumbnailExtension
             }
             catch (Exception exception)
             {
-                // do nothing, we got the previous thumbnail anyway
+                // do nothing, we got the current thumbnail anyway
             }
 
+            // if no later thumbnail was found or its decoding ended with an error
+            // we load the current one to image instance
             using (var ms = new MemoryStream(imageBytes, 0, imageBytes.Length))
             {
                 Image image = Image.FromStream(ms, true);
@@ -103,12 +118,19 @@ namespace GcodeThumbnailExtension
             }
         }
 
+        /// <summary>
+        /// Read base64 data (present as comments) from the current position of the given stream until first "thumbnail end"
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
         private StringBuilder ReadBase64Data(StreamReader reader)
         {
             StringBuilder res = new StringBuilder(20000);
             String line = reader.ReadLine();
+            // read all lines for current thumbnail
             while ((!line.Contains("thumbnail end")) && !reader.EndOfStream)
             {
+                // trim whitespaces and semicolon - the thumbnail is embedded as a comment
                 res.Append(line.Trim("; \n".ToCharArray()));
                 line = reader.ReadLine();
             }
