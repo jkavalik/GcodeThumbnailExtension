@@ -104,7 +104,7 @@ namespace GcodeThumbnailExtension
                 Image otherImg = ReadThumbnailFromGcode(reader);
                 return otherImg;
             }
-            catch (Exception exception)
+            catch (Exception)
             {
                 // do nothing, we got the current thumbnail anyway
             }

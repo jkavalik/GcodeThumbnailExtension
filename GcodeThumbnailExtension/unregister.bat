@@ -1,0 +1,1 @@
+ServerRegistrationManager.exe uninstall GcodeThumbnailExtension.dll
